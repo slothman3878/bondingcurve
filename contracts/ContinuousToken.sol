@@ -30,7 +30,7 @@ abstract contract ContinuousToken is Context, IBondingCurve{
   }
 
   // returns price at current supply
-  function price() public view virtual returns (uint256);
+  function price() public view virtual override returns (uint256);
 
   function mint(uint256 amount) external payable virtual {
     require(msg.value == purchaseCost(amount));
