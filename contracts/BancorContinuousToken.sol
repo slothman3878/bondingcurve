@@ -23,7 +23,7 @@ abstract contract BancorContinuousToken is Context, ContinuousToken, BancorFormu
 
   // Deposits that do not return minted tokens will alter the reserve weight
   receive() external payable {
-    _recalculateCW();
+    _cw = _recalculateCW();
   }
 
   function reserveWeight() public view virtual returns (uint32) {
