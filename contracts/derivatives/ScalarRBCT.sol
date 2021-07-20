@@ -11,7 +11,7 @@ import "../BancorContinuousToken.sol";
 abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
   using SafeMath for uint256;
 
-  uint32 private _m2r; // Mint Reserve Weight
+  uint32 private _m2r; // Mint and Retire Ratio
 
   constructor(
     string memory name_,
