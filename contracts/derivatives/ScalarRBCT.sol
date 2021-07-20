@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../BancorContinuousToken.sol";
 
 /** Two Bonding Curves: Mint Curve and Burn Curve
-    Mint Price >= Burn Price always */
+    Mint Price = _m2r * Burn Price */
 
 abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
   using SafeMath for uint256;
