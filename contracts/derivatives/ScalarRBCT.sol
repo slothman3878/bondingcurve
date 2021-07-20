@@ -24,7 +24,7 @@ abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
   }
 
   function price() public view virtual override initialized returns (uint256) {
-    return address(this).balance / (totalSupply().mul(reserveWeight()/1000000));
+    return BancorContinuousToken.price().mul(_m2r);
   }
 
   function mint(uint256 amount) external payable virtual override {
