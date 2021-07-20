@@ -10,10 +10,6 @@ contract BancorFormula is Power {
 
   uint32 private constant MAX_WEIGHT = 1000000;
 
-  constructor () {
-    Power.init();
-  }
-
   /**
     * @dev given a token supply, reserve balance, weight and an amount (in the main token),
     * calculates the amount of reserve tokens required for purchasing the given amount of pool tokens

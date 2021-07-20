@@ -33,7 +33,7 @@ abstract contract ContinuousToken is Context, IBondingCurve{
   function price() public view virtual override returns (uint256);
 
   function mint(uint256 amount) external payable virtual {
-    require(msg.value == purchaseCost(amount));
+    require(msg.value == purchaseCost(amount), "Incorrect Deposit for Given Amount");
     _token.mint(_msgSender(), amount);
   }
 
@@ -43,8 +43,10 @@ abstract contract ContinuousToken is Context, IBondingCurve{
   
   function retire(uint256 amount) external payable virtual {
     require(_token.balanceOf(_msgSender()) >= amount);
-    (bool sent, ) = payable(_msgSender()).call{value: saleTargetAmount(amount)}("");
-    require(sent);
+    (bool sent, ) = payable(_msgSender()).call{
+      value: saleTargetAmount(amount)
+    }("");
+    require(sent, "Failed ETH Transfer");
     _token.burn(_msgSender(), amount);
   }
 

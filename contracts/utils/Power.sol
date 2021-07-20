@@ -162,7 +162,7 @@ contract Power {
     /**
      * @dev should be executed after construction (too large for the constructor)
      */
-    function init() public {
+    function init() public virtual {
         initMaxExpArray();
     }
 
