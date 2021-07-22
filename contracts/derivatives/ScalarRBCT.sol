@@ -9,6 +9,8 @@ import "../BancorContinuousToken.sol";
     Mint Price = _m2r * Burn Price */
 
 abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
+  // Continuous Organization is set as the Owner.
+  // Revnues are given to the Owner.
   using SafeMath for uint256;
 
   uint32 private _m2r; // Mint and Retire Ratio

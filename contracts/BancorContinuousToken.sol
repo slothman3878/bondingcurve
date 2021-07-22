@@ -9,11 +9,13 @@ import "./utils/BancorFormula.sol";
 abstract contract BancorContinuousToken is Context, ContinuousToken{
   using SafeMath for uint256;
 
-  uint32 private _cw;
+  uint32 private immutable _cw;
   bool private _initialized;
   // Power functions equations and hence the Bancor Formula requires external initialization.
   // Power and Bancor Formula is essentially a library with state variables, and shouldn't be payable in theory.
   BancorFormula internal _formula;
+
+  event Initialize(uint32 reserveWeight, uint256 initialSupply, uint256 initialReserve);
 
   constructor(
     string memory name_,
@@ -30,18 +32,20 @@ abstract contract BancorContinuousToken is Context, ContinuousToken{
     _;
   }
 
-  // Deposits that do not return minted tokens will alter the reserve weight
-  receive() external payable {
+  // Adjusting Reserve Weight
+  /** receive() external payable {
     _cw = _recalculateCW();
-  }
+  } */
 
   // Initialize with non-zero supply and reserve
+  // Need to initialize after constructor
   function init() public virtual payable {
     require(!_initialized);
     require(msg.value > 0, "Initial Reserve Balance Cannot be Zero");
     _token.mint(address(0),1);
     _formula.init();
     _initialized = true;
+    emit Initialize(reserveWeight(),1,address(this).balance);
   }
 
   function reserveWeight() public view virtual returns (uint32) {
@@ -83,8 +87,8 @@ abstract contract BancorContinuousToken is Context, ContinuousToken{
   }
 
   // Recalcuate CW after deposit
-  function _recalculateCW() internal view virtual initialized returns (uint32) {
+  /** function _recalculateCW() internal view virtual initialized returns (uint32) {
     uint256 p_0 = price();
     return uint32(address(this).balance/(p_0.mul(totalSupply())).mul(1000000));
-  }
+  } */
 }
