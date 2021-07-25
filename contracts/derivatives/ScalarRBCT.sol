@@ -13,7 +13,8 @@ abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
   // Revnues are given to the Owner.
   using SafeMath for uint256;
 
-  uint32 private _m2r; // Mint and Retire Ratio
+  uint32 private _m2r; // Mint and Retire Ratio in ppm
+  uint32 private constant MAX_WEIGHT = 1000000;
 
   constructor(
     string memory name_,
@@ -26,7 +27,7 @@ abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
   }
 
   function price() public view virtual override initialized returns (uint256) {
-    return BancorContinuousToken.price().mul(_m2r);
+    return BancorContinuousToken.price().mul(MAX_WEIGHT/_m2r);
   }
 
   function mint(uint256 amount) external payable virtual override {
@@ -44,7 +45,7 @@ abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
       BancorContinuousToken.purchaseTargetAmount(msg.value.div(_m2r))
     );
     (bool sent, ) = payable(owner()).call{
-      value: msg.value.sub(msg.value.div(_m2r))
+      value: (msg.value).mul(_m2r/MAX_WEIGHT) - 1
     }("");
     require(sent, "Failed ETH transfer");
   }
