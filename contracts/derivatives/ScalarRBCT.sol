@@ -30,7 +30,7 @@ abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
     return BancorContinuousToken.price().mul(MAX_WEIGHT/_m2r);
   }
 
-  function mint(uint256 amount) external payable virtual override {
+  function mint(uint256 amount) public payable virtual override {
     require(msg.value == purchaseCost(amount), "Incorrect Deposit for Given Amount");
     (bool sent, ) = payable(owner()).call{
       value: msg.value - BancorContinuousToken.purchaseCost(amount)

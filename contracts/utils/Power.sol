@@ -280,6 +280,7 @@ contract Power {
         if (maxExpArray[hi] >= _x) return hi;
         if (maxExpArray[lo] >= _x) return lo;
 
+        // revert if no return
         require(false);
     }
 

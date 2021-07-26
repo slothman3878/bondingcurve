@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "./ContinuousToken.sol";
 import "./utils/BancorFormula.sol";
 
-abstract contract BancorContinuousToken is Context, ContinuousToken{
+contract BancorContinuousToken is Context, ContinuousToken{
   using SafeMath for uint256;
 
   uint32 private immutable _cw;
@@ -42,7 +42,7 @@ abstract contract BancorContinuousToken is Context, ContinuousToken{
   function init() public virtual payable {
     require(!_initialized);
     require(msg.value > 0, "Initial Reserve Balance Cannot be Zero");
-    _token.mint(address(0),1);
+    _token.mint(address(this),1);
     _formula.init();
     _initialized = true;
     emit Initialize(reserveWeight(),1,address(this).balance);
@@ -53,9 +53,29 @@ abstract contract BancorContinuousToken is Context, ContinuousToken{
   }
 
   function price() public view virtual override initialized returns (uint256) {
-    return address(this).balance / (totalSupply().mul(reserveWeight()/1000000));
+    return (address(this).balance.div(totalSupply())).mul(1000000/reserveWeight());
   }
 
+  function mint(uint256 amount) external payable override virtual {
+    require(msg.value == _formula.purchaseCost(
+      totalSupply(),
+      address(this).balance - msg.value,
+      reserveWeight(),
+      amount
+    ), "Incorrect Deposit for Given Amount");
+    _token.mint(_msgSender(), amount);
+  }
+
+  function mint() external payable override virtual {
+    _token.mint(_msgSender(),
+      _formula.purchaseTargetAmount(
+        totalSupply(),
+        address(this).balance - msg.value,
+        reserveWeight(),
+        msg.value
+    ));
+  }
+  
   // Cost of purchasing "amount" of cont. tokens
   function purchaseCost(uint256 amount) public view virtual override initialized returns (uint256) {
     return _formula.purchaseCost(

@@ -15,7 +15,7 @@ contract BancorFormula is Power {
     * calculates the amount of reserve tokens required for purchasing the given amount of pool tokens
     *
     * Formula:
-    * return = _reserveBalance * ((_amount / _supply + 1) ^ (_reserveWeight / 1000000) - 1)
+    * return = _reserveBalance * ((_amount / _supply + 1) ^ (1000000 / _reserveWeight) - 1)
     *
     * @param _supply          liquid token supply
     * @param _reserveBalance  reserve balance
@@ -33,7 +33,7 @@ contract BancorFormula is Power {
     // validate input
     require(_supply > 0, "ERR_INVALID_SUPPLY");
     require(_reserveBalance > 0, "ERR_INVALID_RESERVE_BALANCE");
-    require(_reserveWeight > 1 && _reserveWeight <= MAX_WEIGHT, "ERR_INVALID_RESERVE_RATIO");
+    require(_reserveWeight > 0 && _reserveWeight <= MAX_WEIGHT, "ERR_INVALID_RESERVE_RATIO");
 
     // special case for 0 amount
     if (_amount == 0) return 0;
@@ -44,7 +44,7 @@ contract BancorFormula is Power {
     uint256 result;
     uint8 precision;
     uint256 baseN = _supply.add(_amount);
-    (result, precision) = power(baseN, _supply, _reserveWeight, MAX_WEIGHT);
+    (result, precision) = power(baseN, _supply, MAX_WEIGHT, _reserveWeight);
     uint256 temp = ((_reserveBalance.mul(result) - 1) >> precision) + 1;
     return temp - _reserveBalance;
   }
@@ -84,7 +84,7 @@ contract BancorFormula is Power {
     uint8 precision;
     uint256 baseN = _amount.add(_reserveBalance);
     (result, precision) = power(baseN, _reserveBalance, _reserveWeight, MAX_WEIGHT);
-    uint256 temp = _supply.mul(result) >> precision;
+    uint256 temp = (_supply.mul(result) >> precision) + 1;
     return temp - _supply;
   }
 
