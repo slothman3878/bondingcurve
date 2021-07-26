@@ -19,9 +19,10 @@ abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
   constructor(
     string memory name_,
     string memory symbol_,
+    uint8 decimals_,
     uint32 cw_,
     uint32 m2r_
-  ) BancorContinuousToken(name_, symbol_, cw_)
+  ) BancorContinuousToken(name_, symbol_, decimals_, cw_)
   {
     _m2r = m2r_;
   }

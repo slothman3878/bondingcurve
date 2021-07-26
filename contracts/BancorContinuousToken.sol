@@ -20,8 +20,9 @@ contract BancorContinuousToken is Context, ContinuousToken{
   constructor(
     string memory name_,
     string memory symbol_,
+    uint8 decimals_,
     uint32 cw_
-  ) ContinuousToken(name_, symbol_)
+  ) ContinuousToken(name_, symbol_, decimals_)
   {
     _cw = cw_;
     _formula = new BancorFormula();

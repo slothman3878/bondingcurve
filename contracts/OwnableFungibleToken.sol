@@ -9,7 +9,11 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract OwnableFungibleToken is Context, Ownable, ERC20 {
   // The "Ownable" tag is more for convenience, so that the minting and burning of tokens can
   // only be triggered by a single entity.
-  constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
+  uint8 private _decimals;
+
+  constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
+    _decimals = decimals_;
+  }
 
   function mint(address account, uint256 amount) external virtual onlyOwner {
     _mint(account, amount);
@@ -17,5 +21,9 @@ contract OwnableFungibleToken is Context, Ownable, ERC20 {
 
   function burn(address account, uint256 amount) external virtual onlyOwner {
     _burn(account, amount);
+  }
+
+  function decimals() public view virtual override returns (uint8) {
+    return _decimals;
   }
 }

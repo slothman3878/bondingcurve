@@ -10,11 +10,12 @@ abstract contract ContinuousToken is Context, IBondingCurve{
   constructor(
     // Token Constructor
     string memory name_,
-    string memory symbol_
+    string memory symbol_,
+    uint8 decimals_
   )
   payable {
     // Add to reserve the amount pertaining to initial supply and reserve
-    _token = new OwnableFungibleToken(name_, symbol_);
+    _token = new OwnableFungibleToken(name_, symbol_, decimals_);
   }
 
   function name() public view virtual returns (string memory) {
