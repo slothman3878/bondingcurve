@@ -32,7 +32,6 @@ abstract contract ContinuousToken is Context, IBondingCurve{
   // returns price at current supply
   function price() public view virtual override returns (uint256);
 
-  // TODO: when calculating purchase costs, target amount, msg.value is added to the calculation
   function mint(uint256 amount) external payable virtual;
 
   function mint() external payable virtual;
