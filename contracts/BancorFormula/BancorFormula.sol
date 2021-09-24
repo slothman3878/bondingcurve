@@ -1,14 +1,22 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Bancor LICENSE
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./Power.sol";
 
-/* Split from https://github.com/bancorprotocol/contracts-solidity/blob/master/solidity/contracts/converter/BancorFormula.sol with some minor alterations */
+/* Note From https://github.com/bancorprotocol/contracts-solidity/blob/master/solidity/contracts/converter/BancorFormula.sol with some minor alterations */
 contract BancorFormula is Power {
   using SafeMath for uint256;
 
+  address private _factory;
+
   uint32 private constant MAX_WEIGHT = 1000000;
+
+  constructor(address factory_) {
+    _factory = factory_;
+  }
+
+  function factory() public view returns (address) { return _factory; }
 
   /**
     * @dev given a token supply, reserve balance, weight and an amount (in the main token),
@@ -45,7 +53,7 @@ contract BancorFormula is Power {
     uint8 precision;
     uint256 baseN = _supply.add(_amount);
     (result, precision) = power(baseN, _supply, MAX_WEIGHT, _reserveWeight);
-    uint256 temp = ((_reserveBalance.mul(result) - 1) >> precision) + 1;
+    uint256 temp = (_reserveBalance.mul(result) - 1) >> precision;
     return temp - _reserveBalance;
   }
 

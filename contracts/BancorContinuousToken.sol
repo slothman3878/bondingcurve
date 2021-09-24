@@ -1,115 +1,159 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
-import "./ContinuousToken.sol";
-import "./utils/BancorFormula.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./BondingCurve/ContinuousToken.sol";
+import "./BancorFormula/BancorFormula.sol";
+import "./libraries/TransferHelper.sol";
 
-contract BancorContinuousToken is Context, ContinuousToken{
+/// @title BancorContinuousToken
+contract BancorContinuousToken is Context, ContinuousToken {
   using SafeMath for uint256;
 
+  /// BancorFormula contract address
+  address private immutable _formula;
+  // Reserve token. Should be a stable coin. For convenience, we'll assume USDC
+  // Theoretically, should be immutable, but need to factor in coin contract updates.
+  address private r_token;
+
+  // Reserve Weight
   uint32 private immutable _cw;
-  bool private _initialized;
-  // Power functions equations and hence the Bancor Formula requires external initialization.
-  // Power and Bancor Formula is essentially a library with state variables, and shouldn't be payable in theory.
-  BancorFormula internal _formula;
 
-  event Initialize(uint32 reserveWeight, uint256 initialSupply, uint256 initialReserve);
+  bool private _initialized = false;
 
-  constructor(
-    string memory name_,
-    string memory symbol_,
-    uint8 decimals_,
-    uint32 cw_
-  ) ContinuousToken(name_, symbol_, decimals_)
-  {
-    _cw = cw_;
-    _formula = new BancorFormula();
+  event Mint(
+    address indexed by,
+    uint256 amount
+  );
+
+  event Retire(
+    address indexed by,
+    string message,
+    uint256 amount,
+    uint256 liquidity
+  );
+
+  constructor(uint32 cw_, address formula_) {
+    _cw = cw_; _formula = formula_;
   }
 
   modifier initialized {
-    require(_initialized, "Token is not Initialized");
+    require(_initialized, "BancorContinuousToken: Token is not Initialized");
     _;
   }
 
-  // Adjusting Reserve Weight
-  /** receive() external payable {
-    _cw = _recalculateCW();
-  } */
-
-  // Initialize with non-zero supply and reserve
-  // Need to initialize after constructor
-  function init() public virtual payable {
+  /// @notice initialize token with non-zero but negligible supply and reserve
+  /// @dev Initializes Bancor formula contract. Mints single token. Can only be called if token hasn't been initialized.
+  /// Note Must call after construction, and before calling any other functions
+  function init(string memory name_, string memory symbol_) public virtual payable {
     require(!_initialized);
-    require(msg.value > 0, "Initial Reserve Balance Cannot be Zero");
-    _token.mint(address(this),1);
-    _formula.init();
+    super.init(name_, symbol_, 18);
+    IERC20Restricted(token()).mint(address(this),1e18); // non-zero, but virtually negligible
+    BancorFormula(_formula).init();
     _initialized = true;
-    emit Initialize(reserveWeight(),1,address(this).balance);
+  }
+
+  /// @notice Returns reserve balance
+  /// @dev calls balanceOf in reserve token contract
+  /**
+   *  Note Reserve Balance, precision = 6
+   *  Reserve balance will be zero initially, but in theory should be 1USDC.
+   *  We can assume the contract has 1USDC initially, since it cannot be withdrawn anyway.
+   */
+  function reserveBalance() public view virtual returns (uint256) {
+    (bool success, bytes memory data) =
+      r_token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
+    require(success && data.length >= 32); /// This is just for safety. Ideally, this requirement shouldn't fail in any circumstance.
+    return abi.decode(data, (uint256))+1e6;
   }
 
   function reserveWeight() public view virtual returns (uint32) {
     return _cw;
   }
 
+  /// @notice Returns price at current supply
+  /// @dev price = reserve_balance / (reserve_weight * total_supply)
   function price() public view virtual override initialized returns (uint256) {
     return (address(this).balance.div(totalSupply())).mul(1000000/reserveWeight());
   }
 
-  function mint(uint256 amount) external payable override virtual {
-    require(msg.value == _formula.purchaseCost(
+  /// @notice Mints tokens pertaining to the deposited amount of reserve tokens
+  /// @dev Calls mint on token contract, purchaseTargetAmount on formula contract
+  /// @param deposit The deposited amount of reserve tokens
+  /// Note Must approve with reserve token before calling
+  function mint(uint256 deposit) external payable virtual {
+    uint256 amount = BancorFormula(_formula).purchaseTargetAmount(
       totalSupply(),
-      address(this).balance - msg.value,
+      reserveBalance(),
       reserveWeight(),
-      amount
-    ), "Incorrect Deposit for Given Amount");
-    _token.mint(_msgSender(), amount);
+      deposit
+    );
+    IERC20Restricted(token()).mint(_msgSender(), amount);
+    // Add `try / catch` statement for smoother error handling
+    TransferHelper.safeTransferFrom(r_token, _msgSender(), address(this), deposit);
+    emit Mint(_msgSender(), amount);
   }
 
-  function mint() external payable override virtual {
-    _token.mint(_msgSender(),
-      _formula.purchaseTargetAmount(
-        totalSupply(),
-        address(this).balance - msg.value,
-        reserveWeight(),
-        msg.value
-    ));
+  /// @notice Retires tokens of given amount, and transfers pertaining reserve tokens to account
+  /// @dev Calls burn on token contract, saleTargetAmmount on formula contract
+  /// @param amount The amount of tokens being retired
+  /// @param message The IPFS hash of the message metadata
+  function retire(uint256 amount, string memory message) external payable virtual {
+    require(totalSupply()-amount>0, "BancorContinuousToken: Requested Retire Amount Exceeds Supply");
+    require(amount <= balanceOf(_msgSender()), "BancorContinuousToken: Requested Retire Amount Exceeds Owned");
+    uint256 liquidity = BancorFormula(_formula).saleTargetAmount(
+      totalSupply(),
+      reserveBalance(),
+      reserveWeight(),
+      amount
+    );
+    TransferHelper.safeTransfer(r_token, _msgSender(), liquidity);
+    IERC20Restricted(token()).burn(_msgSender(), amount);
+    emit Retire(_msgSender(), message, amount, liquidity);
   }
-  
-  // Cost of purchasing "amount" of cont. tokens
+
+  /// @notice Cost of purchasing given amount of tokens
+  /// @dev Calls purchaseCost on formula contract
+  /// @param amount The amount of tokens to be purchased
   function purchaseCost(uint256 amount) public view virtual override initialized returns (uint256) {
-    return _formula.purchaseCost(
+    return BancorFormula(_formula).purchaseCost(
       totalSupply(),
-      address(this).balance,
+      reserveBalance(),
       reserveWeight(),
       amount
     );
   }
 
-  // Cont. token gains from depositing "amount" of reserve tokens
-  function purchaseTargetAmount(uint256 amount) public view virtual override initialized returns (uint256) {
-    return _formula.purchaseTargetAmount(
+  /// @notice Tokens that will be minted for a given deposit
+  /// @dev Calls purchaseTargetAmount on formula contract
+  /// @param deposit The deposited amount of reserve tokens
+  function purchaseTargetAmount(uint256 deposit) public view virtual override initialized returns (uint256) {
+    return BancorFormula(_formula).purchaseTargetAmount(
       totalSupply(),
-      address(this).balance,
+      reserveBalance(),
       reserveWeight(),
-      amount
+      deposit
     );
   }
 
-  // Reserve token gains from liquidating "amount" of cont. tokens
+  /// @notice Amount in reserve tokens from retiring given amount of cont. tokens
+  /// @dev Calls saleTargetAmount on formula contract
+  /// @param amount The amount of tokens to be retired
   function saleTargetAmount(uint256 amount) public view virtual override initialized returns (uint256) {
-    return _formula.purchaseTargetAmount(
+    require(totalSupply()-amount>0, "BancorContinuousToken: Requested Retire Amount Exceeds Supply");
+    return BancorFormula(_formula).saleTargetAmount(
       totalSupply(),
-      address(this).balance,
+      reserveBalance(),
       reserveWeight(),
       amount
     );
   }
 
-  // Recalcuate CW after deposit
-  /** function _recalculateCW() internal view virtual initialized returns (uint32) {
-    uint256 p_0 = price();
-    return uint32(address(this).balance/(p_0.mul(totalSupply())).mul(1000000));
-  } */
+  /// @notice Changes reserve token address in case it is updated
+  /// NOTE need better implementation. Adding an admin account seems the best option.
+  function setReserveToken(address _r_token) external virtual  {
+    r_token = _r_token;
+  }
 }

@@ -1,9 +1,10 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Bancor LICENSE
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-/* Split from https://github.com/bancorprotocol/contracts-solidity/blob/master/solidity/contracts/converter/BancorFormula.sol with some minor alterations */
+/// @notice For calculating fractional exponents
+/// Note from https://github.com/bancorprotocol/contracts-solidity/blob/master/solidity/contracts/converter/BancorFormula.sol
 contract Power {
     using SafeMath for uint256;
 
