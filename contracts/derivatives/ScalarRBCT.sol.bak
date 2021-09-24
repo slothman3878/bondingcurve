@@ -13,18 +13,20 @@ abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
   // Revnues are given to the Owner.
   using SafeMath for uint256;
 
-  uint32 private _m2r; // Mint and Retire Ratio in ppm
+  uint32 private immutable _m2r; // Mint and Retire Ratio in ppm
   uint32 private constant MAX_WEIGHT = 1000000;
 
   constructor(
-    string memory name_,
-    string memory symbol_,
-    uint8 decimals_,
     uint32 cw_,
-    uint32 m2r_
-  ) BancorContinuousToken(name_, symbol_, decimals_, cw_)
+    uint32 m2r_,
+    address formula_
+  ) BancorContinuousToken(cw_, formula_)
   {
     _m2r = m2r_;
+  }
+
+  function init(string memory name_, string memory symbol_) public virtual payable {
+    super.init(name_, symbol_);
   }
 
   function price() public view virtual override initialized returns (uint256) {
@@ -32,12 +34,16 @@ abstract contract ScalarRBCT is Context, Ownable, BancorContinuousToken{
   }
 
   function mint(uint256 amount) public payable virtual override {
-    require(msg.value == purchaseCost(amount), "Incorrect Deposit for Given Amount");
-    (bool sent, ) = payable(owner()).call{
-      value: msg.value - BancorContinuousToken.purchaseCost(amount)
-    }("");
-    require(sent, "Failed ETH transfer");
-    _token.mint(_msgSender(), amount);
+    uint256 amount = BancorFormula(_formula).purchaseTargetAmount(
+      totalSupply(),
+      reserveBalance(),
+      reserveWeight(),
+      deposit
+    );
+    IERC20Restricted(token()).mint(_msgSender(), amount);
+    // Add `try / catch` statement for smoother error handling
+    TransferHelper.safeTransferFrom(r_token, _msgSender(), address(this), deposit);
+    emit Mint(_msgSender(), amount);
   }
 
   function mint() external payable virtual override {

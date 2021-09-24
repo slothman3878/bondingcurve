@@ -13,13 +13,13 @@ contract BancorContinuousToken is Context, ContinuousToken {
   using SafeMath for uint256;
 
   /// BancorFormula contract address
-  address private immutable _formula;
+  address internal immutable _formula;
   // Reserve token. Should be a stable coin. For convenience, we'll assume USDC
   // Theoretically, should be immutable, but need to factor in coin contract updates.
-  address private r_token;
+  address internal r_token;
 
   // Reserve Weight
-  uint32 private immutable _cw;
+  uint32 internal immutable _cw;
 
   bool private _initialized = false;
 
