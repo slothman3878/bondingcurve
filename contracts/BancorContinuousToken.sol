@@ -30,13 +30,12 @@ contract BancorContinuousToken is Context, ContinuousToken {
 
   event Retire(
     address indexed by,
-    string message,
     uint256 amount,
     uint256 liquidity
   );
 
-  constructor(uint32 cw_, address formula_) {
-    _cw = cw_; _formula = formula_;
+  constructor(uint32 cw_, address formula_, address r_token_) {
+    _cw = cw_; _formula = formula_; r_token = r_token_;
   }
 
   modifier initialized {
@@ -59,13 +58,13 @@ contract BancorContinuousToken is Context, ContinuousToken {
   /// @dev calls balanceOf in reserve token contract
   /**
    *  Note Reserve Balance, precision = 6
-   *  Reserve balance will be zero initially, but in theory should be 1USDC.
+   *  Reserve balance will be zero initially, but in theory should be 1 reserve token.
    *  We can assume the contract has 1USDC initially, since it cannot be withdrawn anyway.
    */
   function reserveBalance() public view virtual returns (uint256) {
     (bool success, bytes memory data) =
       r_token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
-    require(success && data.length >= 32); /// This is just for safety. Ideally, this requirement shouldn't fail in any circumstance.
+    require(success && data.length >= 32, "Reserve Token Balance Check Failure"); /// This is just for safety. Ideally, this requirement shouldn't fail in any circumstance.
     return abi.decode(data, (uint256))+1e6;
   }
 
@@ -99,8 +98,7 @@ contract BancorContinuousToken is Context, ContinuousToken {
   /// @notice Retires tokens of given amount, and transfers pertaining reserve tokens to account
   /// @dev Calls burn on token contract, saleTargetAmmount on formula contract
   /// @param amount The amount of tokens being retired
-  /// @param message The IPFS hash of the message metadata
-  function retire(uint256 amount, string memory message) external payable virtual {
+  function retire(uint256 amount) external payable virtual {
     require(totalSupply()-amount>0, "BancorContinuousToken: Requested Retire Amount Exceeds Supply");
     require(amount <= balanceOf(_msgSender()), "BancorContinuousToken: Requested Retire Amount Exceeds Owned");
     uint256 liquidity = BancorFormula(_formula).saleTargetAmount(
@@ -111,7 +109,7 @@ contract BancorContinuousToken is Context, ContinuousToken {
     );
     TransferHelper.safeTransfer(r_token, _msgSender(), liquidity);
     IERC20Restricted(token()).burn(_msgSender(), amount);
-    emit Retire(_msgSender(), message, amount, liquidity);
+    emit Retire(_msgSender(), amount, liquidity);
   }
 
   /// @notice Cost of purchasing given amount of tokens

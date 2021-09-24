@@ -8,15 +8,7 @@ import "./Power.sol";
 contract BancorFormula is Power {
   using SafeMath for uint256;
 
-  address private _factory;
-
   uint32 private constant MAX_WEIGHT = 1000000;
-
-  constructor(address factory_) {
-    _factory = factory_;
-  }
-
-  function factory() public view returns (address) { return _factory; }
 
   /**
     * @dev given a token supply, reserve balance, weight and an amount (in the main token),
